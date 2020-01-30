@@ -1,3 +1,24 @@
+/*
+ * Copyright (C) 2017-2020 Vincent Sallaberry
+ * dvdnav-info <https://github.com/vsallaberry>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+/*
+ *  show dvd titles/chapter and subs with libdvdnav
+ */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -26,7 +47,7 @@ typedef struct {
     char *devpath;
 } options_t;
 static int usage(int exit_status, int argc, char **argv);
-static const char *get_program_source();
+
 /* parse_options() : Main entry point for generic options parsing
  * Returns
  *  > 0 on SUCCESS with no exit required
