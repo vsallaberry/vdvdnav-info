@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 #ifndef APP_INCLUDE_SOURCE
 # define APP_NO_SOURCE_STRING "\n/* #@@# FILE #@@# " BUILD_APPNAME "/* */\n" \
                                   BUILD_APPNAME " source not included in this build.\n"
-int __dvdnav_get_source(FILE * out, char * buffer, unsigned int buffer_size, void ** ctx) {
+int dvdnav_get_source(FILE * out, char * buffer, unsigned int buffer_size, void ** ctx) {
         return fprintf(out, APP_NO_SOURCE_STRING);
         //return vdecode_buffer(out, buffer, buffer_size, ctx,
         //                      APP_NO_SOURCE_STRING, sizeof(APP_NO_SOURCE_STRING) - 1);
