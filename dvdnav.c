@@ -1,33 +1,8 @@
-/*
- * Copyright (C) 2017-2020 Vincent Sallaberry
- * dvdnav-info <https://github.com/vsallaberry>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
-/*
- *  show dvd titles/chapter and subs with libdvdnav
- */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 #include <dvdnav/dvdnav.h>
-
-#ifdef HAVE_VERSION_H
-# include "version.h"
-#endif
 
 #define ERR_OK      0
 #define ERR_OPEN    1
@@ -47,7 +22,7 @@ typedef struct {
     char *devpath;
 } options_t;
 static int usage(int exit_status, int argc, char **argv);
-
+static const char *get_program_source();
 /* parse_options() : Main entry point for generic options parsing
  * Returns
  *  > 0 on SUCCESS with no exit required
@@ -71,18 +46,15 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
         case 'h':
             usage(0, argc, argv);
             fprintf(stdout, "Arguments:\n");
-	        fprintf(stdout, "  [dvd_device]    : (optional) dvd device/path to scan, /dev/disk1 by default\n");
+	    fprintf(stdout, "  [dvd_device]    : (optional) dvd device/path to scan, /dev/disk1 by default\n");
 	    fprintf(stdout, "\nDescription:\n"
 			    "  This programs scans a dvd and output:\n"
 			    "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <chapters_secs.ms>\n"
 			    "    SUB <n> <id> <name>\n\n");
-	        return 0;
-        case 's':
-            //fprintf(stdout, "%s\n", get_program_source());
-            //break ;
-            dvdnav_get_source(stdout, NULL, 0, NULL);
-            //vlib_get_source(stdout, NULL, 0, NULL);
-	        return 0;
+	    return 0;
+	case 's':
+	    fprintf(stdout, "%s\n", get_program_source());
+	    return 0;
 	case '-':
 	    if (options->devpath != NULL) {
 		fprintf(stderr, "error: device path can be given only once.\n");
@@ -177,26 +149,23 @@ int main(int argc, char **argv) {
 }
 
 /** OPTIONS *********************************************************************************/
-#ifndef BUILD_APPNAME
-# define BUILD_APPNAME "dvdnav"
+
+#ifdef INCLUDE_SOURCE
+static const char * s_program_source =
+# include "src.inc"
+;
+#else
+static const char * s_program_source = "<source code not included in binary>";
 #endif
-#ifndef APP_INCLUDE_SOURCE
-# define APP_NO_SOURCE_STRING "\n/* #@@# FILE #@@# " BUILD_APPNAME "/* */\n" \
-                                  BUILD_APPNAME " source not included in this build.\n"
-int __dvdnav_get_source(FILE * out, char * buffer, unsigned int buffer_size, void ** ctx) {
-        return fprintf(out, APP_NO_SOURCE_STRING);
-        //return vdecode_buffer(out, buffer, buffer_size, ctx,
-        //                      APP_NO_SOURCE_STRING, sizeof(APP_NO_SOURCE_STRING) - 1);
-}
+static const char * get_program_source() { return s_program_source; }
+#ifndef SRC_PATH
+# define SRC_PATH "."
 #endif
-#ifndef BUILD_SRCPATH
-# define BUILD_SRCPATH "."
+#ifndef BUILD
+# define BUILD 0
 #endif
-#ifndef APP_BUILD_NUMBER
-# define APP_BUILD_NUMBER 1998
-#endif
-#ifndef APP_VERSION
-# define APP_VERSION "0.1_beta-116"
+#ifndef VERSION
+# define VERSION "0.0_beta-115"
 #endif
 static int usage(int exit_status, int argc, char **argv) {
     FILE * out = exit_status ? stderr : stdout;
@@ -207,7 +176,7 @@ static int usage(int exit_status, int argc, char **argv) {
 	start_name++;
     }
 
-    fprintf(out, "%s %s build #%d on %s, %s from %s/%s\n\n", start_name, APP_VERSION, APP_BUILD_NUMBER, __DATE__, __TIME__, BUILD_SRCPATH, __FILE__);
+    fprintf(out, "%s %s build #%d on %s, %s from %s/%s\n\n", start_name, VERSION, BUILD, __DATE__, __TIME__, SRC_PATH, __FILE__);
     fprintf(out, "Usage: %s [<options>] [<arguments>]\n", start_name);
     for (int i_opt = 0; s_opt_desc[i_opt].short_opt; i_opt++) {;
 	int n_printed;
