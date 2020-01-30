@@ -80,7 +80,7 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
         case 's':
             //fprintf(stdout, "%s\n", get_program_source());
             //break ;
-            dvdnav_get_source(stdout, NULL, 0, NULL);
+            vdvdnav_info_get_source(stdout, NULL, 0, NULL);
             //vlib_get_source(stdout, NULL, 0, NULL);
 	        return 0;
 	case '-':
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 #ifndef APP_INCLUDE_SOURCE
 # define APP_NO_SOURCE_STRING "\n/* #@@# FILE #@@# " BUILD_APPNAME "/* */\n" \
                                   BUILD_APPNAME " source not included in this build.\n"
-int dvdnav_get_source(FILE * out, char * buffer, unsigned int buffer_size, void ** ctx) {
+int vdvdnav_info_get_source(FILE * out, char * buffer, unsigned int buffer_size, void ** ctx) {
         return fprintf(out, APP_NO_SOURCE_STRING);
         //return vdecode_buffer(out, buffer, buffer_size, ctx,
         //                      APP_NO_SOURCE_STRING, sizeof(APP_NO_SOURCE_STRING) - 1);

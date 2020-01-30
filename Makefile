@@ -1,6 +1,6 @@
 #
 # Copyright (C) 2017-2020 Vincent Sallaberry
-# vsensorsdemo <https://github.com/vsallaberry/vsensorsdemo>
+# vdvdnav-info <https://github.com/vsallaberry>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 ############################################################################################
 #
-# vsensorsdemo: test program for libvsensors.
+# vdvdnav-info
 #
 # Generic Makefile for GNU-like or BSD-like make (paths with spaces not supported).
 #   demo of this Makefile with multiple languages: <https://github.com/vsallaberry/vmultilangdemo>
@@ -34,7 +34,7 @@ all: default_rule
 #############################################################################################
 
 # Name of the Package (DISTNAME, BIN and LIB depends on it)
-NAME		= dvdnav
+NAME		= vdvdnav_info
 
 # SRCDIR: Folder where sources are. Use '.' for current directory. MUST NEVER BE EMPTY !!
 # Folders which contains a Makefile are ignored, you have to add them in SUBDIRS and update SUBLIBS.
@@ -71,7 +71,7 @@ BUILDDIR	= $(SRCDIR)
 
 # Binary name and library name (prefix with '$(BUILDDIR)/' to put it in build folder).
 # Fill LIB and set BIN,JAR empty to create a library, or clear LIB,JAR and set BIN to create a binary.
-BIN		= $(NAME)
+BIN		= vdvdnav-info
 LIB		=
 JAR		=
 
