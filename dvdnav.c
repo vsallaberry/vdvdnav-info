@@ -205,7 +205,8 @@ int vdvdnav_info_get_source(FILE * out, char * buffer, unsigned int buffer_size,
 # define APP_VERSION "0.1_beta-116"
 #endif
 static int version(FILE *out, const char *name) {
-    fprintf(out, "%s %s build #%d on %s, %s from %s/%s\n", name, APP_VERSION, BUILD_NUMBER, __DATE__, __TIME__, BUILD_SRCPATH, __FILE__);
+    fprintf(out, "%s %s build #%d on %s, %s git:%s from %s/%s\n",
+            name, APP_VERSION, BUILD_NUMBER, __DATE__, __TIME__, BUILD_GITREV, BUILD_SRCPATH, __FILE__);
 }
 static int usage(int exit_status, int argc, char **argv) {
     FILE * out = exit_status ? stderr : stdout;

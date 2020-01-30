@@ -95,7 +95,7 @@ INSTALL_FILES	= $(BIN)
 #	          libcrypt crypt.h crypt_gnu crypt_des_ext libintl
 # If a feature is prefixed with '+' (eg: +openssl), this makes it MANDATORY
 # and make will fail if the feature is not available.
-CONFIG_CHECK	= zlib ncurses
+CONFIG_CHECK	=
 
 # Project specific Flags (system specific flags are set in $(sys_{LIBS,WARN,INCS,OPTI,DEBUG})
 # if you set LIBS_<system>, or similar. They are added here to make you control the order of arguments).
@@ -105,7 +105,7 @@ ARCH_RELEASE	= -march=native -arch i386 -arch x86_64
 OPTI_COMMON	= -pipe -fstack-protector
 OPTI_RELEASE	= -O3 $(OPTI_COMMON) $(sys_OPTI)
 INCS_RELEASE	= $(sys_INCS) -I$(PREFIX)/include
-LIBS_RELEASE	= $(SUBLIBS) $(sys_LIBS) $(CONFIG_ZLIB) $(CONFIG_CURSES) -lpthread -L$(PREFIX)/lib -ldvdnav
+LIBS_RELEASE	= $(SUBLIBS) $(sys_LIBS) -lpthread -L$(PREFIX)/lib -ldvdnav
 MACROS_RELEASE	=
 WARN_DEBUG	= $(WARN_RELEASE)
 ARCH_DEBUG	= $(ARCH_RELEASE)
