@@ -35,11 +35,13 @@
 
 static struct { char short_opt; const char *desc; const char* arg; } s_opt_desc[] = {
 	{ 'h', "show usage", NULL },
+	{ 'V', "show version", NULL },
 	{ 's', "show source", NULL },
 	{ 0, NULL, NULL }
 };
 static struct { char short_opt; const char *long_opt; } s_opt_long[] = {
 	{ 's', "source" },
+	{ 'V', "version" },
 	{ 'h', "help" },
 	{ 0, NULL }
 };
@@ -47,6 +49,7 @@ typedef struct {
     char *devpath;
 } options_t;
 static int usage(int exit_status, int argc, char **argv);
+static int version(FILE *out, const char *name);
 
 /* parse_options() : Main entry point for generic options parsing
  * Returns
@@ -71,27 +74,30 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
         case 'h':
             usage(0, argc, argv);
             fprintf(stdout, "Arguments:\n");
-	        fprintf(stdout, "  [dvd_device]    : (optional) dvd device/path to scan, /dev/disk1 by default\n");
-	    fprintf(stdout, "\nDescription:\n"
-			    "  This programs scans a dvd and output:\n"
-			    "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <chapters_secs.ms>\n"
-			    "    SUB <n> <id> <name>\n\n");
-	        return 0;
+            fprintf(stdout, "  [dvd_device]    : (optional) dvd device/path to scan, /dev/disk1 by default\n");
+            fprintf(stdout, "\nDescription:\n"
+                    "  This programs scans a dvd and output:\n"
+                    "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <chapters_secs.ms>\n"
+                    "    SUB <n> <id> <name>\n\n");
+            return 0;
+        case 'V':
+            version(stdout, BUILD_APPNAME);
+            return 0;
         case 's':
             //fprintf(stdout, "%s\n", get_program_source());
             //break ;
             vdvdnav_info_get_source(stdout, NULL, 0, NULL);
             //vlib_get_source(stdout, NULL, 0, NULL);
-	        return 0;
-	case '-':
-	    if (options->devpath != NULL) {
-		fprintf(stderr, "error: device path can be given only once.\n");
-		return -1;
-	    }
-	    options->devpath = arg;
-	    return 1;
+            return 0;
+        case '-':
+            if (options->devpath != NULL) {
+                fprintf(stderr, "error: device path can be given only once.\n");
+                return -1;
+            }
+            options->devpath = arg;
+            return 1;
         default:
-	   return -1;
+            return -1;
     }
     return 1;
 }
@@ -198,6 +204,9 @@ int vdvdnav_info_get_source(FILE * out, char * buffer, unsigned int buffer_size,
 #ifndef APP_VERSION
 # define APP_VERSION "0.1_beta-116"
 #endif
+static int version(FILE *out, const char *name) {
+    fprintf(out, "%s %s build #%d on %s, %s from %s/%s\n", name, APP_VERSION, APP_BUILD_NUMBER, __DATE__, __TIME__, BUILD_SRCPATH, __FILE__);
+}
 static int usage(int exit_status, int argc, char **argv) {
     FILE * out = exit_status ? stderr : stdout;
     char *start_name = strrchr(*argv, '/');
@@ -207,8 +216,8 @@ static int usage(int exit_status, int argc, char **argv) {
 	start_name++;
     }
 
-    fprintf(out, "%s %s build #%d on %s, %s from %s/%s\n\n", start_name, APP_VERSION, APP_BUILD_NUMBER, __DATE__, __TIME__, BUILD_SRCPATH, __FILE__);
-    fprintf(out, "Usage: %s [<options>] [<arguments>]\n", start_name);
+    version(out, start_name);
+    fprintf(out, "\nUsage: %s [<options>] [<arguments>]\n", start_name);
     for (int i_opt = 0; s_opt_desc[i_opt].short_opt; i_opt++) {;
 	int n_printed;
 	n_printed = fprintf(out, "  -%c", s_opt_desc[i_opt].short_opt);
