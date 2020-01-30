@@ -34,7 +34,7 @@ all: default_rule
 #############################################################################################
 
 # Name of the Package (DISTNAME, BIN and LIB depends on it)
-NAME		= vdvdnav_info
+NAME		= vdvdnav-info
 
 # SRCDIR: Folder where sources are. Use '.' for current directory. MUST NEVER BE EMPTY !!
 # Folders which contains a Makefile are ignored, you have to add them in SUBDIRS and update SUBLIBS.
@@ -71,7 +71,7 @@ BUILDDIR	= $(SRCDIR)
 
 # Binary name and library name (prefix with '$(BUILDDIR)/' to put it in build folder).
 # Fill LIB and set BIN,JAR empty to create a library, or clear LIB,JAR and set BIN to create a binary.
-BIN		= vdvdnav-info
+BIN		= $(NAME)
 LIB		=
 JAR		=
 
