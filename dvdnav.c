@@ -70,6 +70,8 @@ static int parse_options(int argc, char **argv, void *options);
  */
 static int parse_option(char opt, char *arg, void *v_options, int argc, char **argv, int *i_argv) {
     options_t *options = (options_t *) v_options;
+    (void) i_argv;
+
     switch (opt) {
         case 'h':
             usage(0, argc, argv);
@@ -84,10 +86,7 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
             version(stdout, BUILD_APPNAME);
             return 0;
         case 's':
-            //fprintf(stdout, "%s\n", get_program_source());
-            //break ;
             vdvdnav_info_get_source(stdout, NULL, 0, NULL);
-            //vlib_get_source(stdout, NULL, 0, NULL);
             return 0;
         case '-':
             if (options->devpath != NULL) {
@@ -207,86 +206,89 @@ int vdvdnav_info_get_source(FILE * out, char * buffer, unsigned int buffer_size,
 static int version(FILE *out, const char *name) {
     fprintf(out, "%s %s build #%d on %s, %s git:%s from %s/%s\n",
             name, APP_VERSION, BUILD_NUMBER, __DATE__, __TIME__, BUILD_GITREV, BUILD_SRCPATH, __FILE__);
+    return 0;
 }
 static int usage(int exit_status, int argc, char **argv) {
     FILE * out = exit_status ? stderr : stdout;
     char *start_name = strrchr(*argv, '/');
+    (void) argc;
+
     if (start_name == NULL) {
-	start_name = *argv;
+        start_name = *argv;
     } else {
-	start_name++;
+        start_name++;
     }
 
     version(out, start_name);
     fprintf(out, "\nUsage: %s [<options>] [<arguments>]\n", start_name);
     for (int i_opt = 0; s_opt_desc[i_opt].short_opt; i_opt++) {;
-	int n_printed;
-	n_printed = fprintf(out, "  -%c", s_opt_desc[i_opt].short_opt);
-	for (int i_long = 0; s_opt_long[i_long].short_opt; i_long++) {
-	    if (s_opt_long[i_long].short_opt == s_opt_desc[i_opt].short_opt) {
-	        n_printed += fprintf(out, ", --%s", s_opt_long[i_long].long_opt);
-		break ;
-	    }
-	};
-	if (s_opt_desc[i_opt].arg) {
-	    n_printed += fprintf(out, " %s", s_opt_desc[i_opt].arg);
-	}
-	while (n_printed++ < 30) {
-	    fprintf(out, " ");
-	}
-	fprintf(out, ": %s\n", s_opt_desc[i_opt].desc);
+        int n_printed;
+        n_printed = fprintf(out, "  -%c", s_opt_desc[i_opt].short_opt);
+        for (int i_long = 0; s_opt_long[i_long].short_opt; i_long++) {
+            if (s_opt_long[i_long].short_opt == s_opt_desc[i_opt].short_opt) {
+                n_printed += fprintf(out, ", --%s", s_opt_long[i_long].long_opt);
+                break ;
+            }
+        };
+        if (s_opt_desc[i_opt].arg) {
+            n_printed += fprintf(out, " %s", s_opt_desc[i_opt].arg);
+        }
+        while (n_printed++ < 30) {
+            fprintf(out, " ");
+        }
+        fprintf(out, ": %s\n", s_opt_desc[i_opt].desc);
     }
     fprintf(out, "\n");
     return exit_status;
 }
 static int parse_options(int argc, char **argv, void *options) {
     for(int i_argv = 1, stop_options = 0; i_argv < argc; i_argv++) {
-	int result;
+        int result;
         if (*argv[i_argv] == '-' && !stop_options) {
-	    char *short_args = argv[i_argv] + 1;
-	    char short_arg_from_long[2] = { 0, 0 };
-	    if (!*short_args) {
-		fprintf(stderr, "error: missing option\n");
-		return usage(-3, argc, argv);
-	    }
-	    if (*short_args == '-') {
-		int i_long;
-		if (!short_args[1]) {
-		    stop_options = 1;
-		    continue ;
-		}
-	        for (i_long = 0; s_opt_long[i_long].short_opt; i_long++) {
-	    	    if (!strcmp(argv[i_argv] + 2, s_opt_long[i_long].long_opt)) {
-	    		short_arg_from_long[0] = s_opt_long[i_long].short_opt;
-    			short_args = short_arg_from_long;
-			break ;
-		    }
-		}
-		if (!s_opt_long[i_long].short_opt) {
-		    fprintf(stderr, "error: unknown option '%s'\n", argv[i_argv]);
-		    return usage(-2, argc, argv);
-		}
-	    }
+            char *short_args = argv[i_argv] + 1;
+            char short_arg_from_long[2] = { 0, 0 };
+            if (!*short_args) {
+                fprintf(stderr, "error: missing option\n");
+                return usage(-3, argc, argv);
+            }
+            if (*short_args == '-') {
+                int i_long;
+                if (!short_args[1]) {
+                    stop_options = 1;
+                    continue ;
+                }
+                for (i_long = 0; s_opt_long[i_long].short_opt; i_long++) {
+                    if (!strcmp(argv[i_argv] + 2, s_opt_long[i_long].long_opt)) {
+                        short_arg_from_long[0] = s_opt_long[i_long].short_opt;
+                        short_args = short_arg_from_long;
+                        break ;
+                    }
+                }
+                if (!s_opt_long[i_long].short_opt) {
+                    fprintf(stderr, "error: unknown option '%s'\n", argv[i_argv]);
+                    return usage(-2, argc, argv);
+                }
+            }
             for (char *arg = short_args; *arg; arg++) {
-		result = parse_option(*arg, i_argv + 1 < argc ? argv[i_argv+1]: NULL, options, argc, argv, &i_argv);
-		if (result < 0) {
+                result = parse_option(*arg, i_argv + 1 < argc ? argv[i_argv+1]: NULL, options, argc, argv, &i_argv);
+                if (result < 0) {
                     fprintf(stderr, "error: unknown/incorrect option '-%c'\n", *arg);
                     return usage(-1, argc, argv);
-	        }
-		if (result == 0) {
-		    return 0;
-		}
+                }
+                if (result == 0) {
+                    return 0;
+                }
             }
         } else {
-	    char *arg = argv[i_argv];
-	    result = parse_option('-', arg, options, argc, argv, &i_argv);
-	    if (result < 0) {
+            char *arg = argv[i_argv];
+            result = parse_option('-', arg, options, argc, argv, &i_argv);
+            if (result < 0) {
                 fprintf(stderr, "error: incorrect argument %s\n", arg);
-		return usage(-3, argc, argv);
-	    }
-	    if (result == 0) {
-		return 0;
-	    }
+                return usage(-3, argc, argv);
+            }
+            if (result == 0) {
+                return 0;
+            }
         }
     }
     return 1;
