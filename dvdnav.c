@@ -19,11 +19,15 @@
 /*
  *  show dvd titles/chapter and subs with libdvdnav
  */
+#include <sys/stat.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 #include <dvdnav/dvdnav.h>
+#include <libbluray/bluray.h>
 
 #ifdef HAVE_VERSION_H
 # include "version.h"
@@ -76,9 +80,9 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
         case 'h':
             usage(0, argc, argv);
             fprintf(stdout, "Arguments:\n");
-            fprintf(stdout, "  [dvd_device]    : (optional) dvd device/path to scan, /dev/disk1 by default\n");
+            fprintf(stdout, "  [<device_or_path>]    : (optional) dvd/bluray device/path to scan, /dev/disk1 by default\n");
             fprintf(stdout, "\nDescription:\n"
-                    "  This programs scans a dvd and output:\n"
+                    "  This programs scans a dvd or bluray and outputs:\n"
                     "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <chapters_secs.ms>\n"
                     "    SUB <n> <id> <name>\n\n");
             return 0;
@@ -100,23 +104,54 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
     }
     return 1;
 }
-int main(int argc, char **argv) {
-    options_t options = { .devpath = NULL };
-    int result;
+int process_bluray(options_t * opts) {
+    BLURAY *                    br;
+    const BLURAY_DISC_INFO *    disc_info;
+    BLURAY_TITLE_INFO *         title_info;
+    unsigned int                ntitles;
+    uint64_t                    duration;
+    FILE * const                out = stdout;
 
-    if ((result = parse_options(argc, argv, &options)) <= 0) {
-	return -result;
+    if ((br = bd_open(opts->devpath, NULL)) == NULL) {
+        fprintf(stderr, "bluray_open: error openning %s.\n", opts->devpath);
+        return ERR_OPEN;
     }
 
-    if (options.devpath == NULL) {
-   	options.devpath = "/dev/disk1";
+    if ((disc_info = bd_get_disc_info(br)) == NULL) {
+        fprintf(stderr, "bluray_get_disc_info: error.\n");
+        return ERR_OTHER;
     }
+    //uint32_t bd_get_titles(BLURAY *bd, uint8_t flags, uint32_t min_title_length);
+    if ((ntitles = bd_get_titles(br, 0, 0)) == 0) {
+        fprintf(stderr, "bluray_get_titles(): no title.\n");
+        return ERR_OTHER;
+    }
+    for (unsigned int i = 0; i < ntitles; ++i) {
+        //BLURAY_TITLE_INFO* bd_get_title_info(BLURAY *bd, uint32_t title_idx, unsigned angle);
+        if ((title_info = bd_get_title_info(br, i, 0)) == NULL) {
+            fprintf(stderr, "bluray_get_title_info(%d): error.\n", i);
+            continue ;
+        }
+        duration = title_info->duration;
+        duration = ((duration * 100) / 90) / 100;
+        fprintf(out, "TITLE % 3d DURATION % 9lld.%03lld %02lld:%02lld:%02lld.%03lld CHAPTERS ",
+                title_info->idx + 1, duration / 1000, duration % 1000,
+                (duration / 1000) / 3600, ((duration / 1000) / 60) % 60,
+                (duration / 1000) % 60, duration % 1000);
+        fprintf(out, "\n");
+    }
+    fprintf(stderr, "bluray chapters not implemented\n");
+
+    bd_close(br);
+
+    return ERR_OK;
+}
+int process_dvd(options_t * opts) {
     dvdnav_status_t status = DVDNAV_STATUS_ERR;
     dvdnav_t *      nav = NULL;
 
-    fprintf(stderr, "searching titles on dvd %s...\n", options.devpath);
-    if ((status = dvdnav_open(&nav, options.devpath)) != DVDNAV_STATUS_OK) {
-        fprintf(stderr, "dvdnav_open: error openning %s.\n", options.devpath);
+    if ((status = dvdnav_open(&nav, opts->devpath)) != DVDNAV_STATUS_OK) {
+        fprintf(stderr, "dvdnav_open: error openning %s.\n", opts->devpath);
         return ERR_OPEN;
     }
 
@@ -179,6 +214,32 @@ int main(int argc, char **argv) {
         fprintf(stderr, "dvdnav_close: error: %s\n", dvdnav_err_to_string(nav));
     }
     return status == DVDNAV_STATUS_OK ? ERR_OK : ERR_OTHER;
+}
+int main(int argc, char **argv) {
+    options_t       options = { .devpath = NULL };
+    int             result;
+    struct stat     stats;
+    char            path[PATH_MAX] = {0, };
+
+    if ((result = parse_options(argc, argv, &options)) <= 0) {
+	    return -result;
+    }
+
+    if (options.devpath == NULL) {
+   	    options.devpath = "/dev/disk1";
+    }
+
+    fprintf(stderr, "searching titles on %s...\n", options.devpath);
+    strcpy(path, options.devpath);
+    strcat(path, "/");
+    strcat(path, "BDMV/index.bdmv");
+
+    if (stat(path, &stats) == 0) {
+        return process_bluray(&options);
+    } else {
+        return process_dvd(&options);
+    }
+
 }
 
 /** OPTIONS *********************************************************************************/
