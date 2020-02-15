@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <dvdnav/dvdnav.h>
 #include <libbluray/bluray.h>
@@ -41,16 +42,19 @@ static struct { char short_opt; const char *desc; const char* arg; } s_opt_desc[
 	{ 'h', "show usage", NULL },
 	{ 'V', "show version", NULL },
 	{ 's', "show source", NULL },
+	{ 'm', "minimum title duration in seconds", NULL },
 	{ 0, NULL, NULL }
 };
 static struct { char short_opt; const char *long_opt; } s_opt_long[] = {
 	{ 's', "source" },
 	{ 'V', "version" },
 	{ 'h', "help" },
+	{ 'm', "minimum" },
 	{ 0, NULL }
 };
 typedef struct {
     char *devpath;
+    unsigned int min_title_secs;
 } options_t;
 static int usage(int exit_status, int argc, char **argv);
 static int version(FILE *out, const char *name);
@@ -74,7 +78,6 @@ static int parse_options(int argc, char **argv, void *options);
  */
 static int parse_option(char opt, char *arg, void *v_options, int argc, char **argv, int *i_argv) {
     options_t *options = (options_t *) v_options;
-    (void) i_argv;
 
     switch (opt) {
         case 'h':
@@ -83,12 +86,27 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
             fprintf(stdout, "  [<device_or_path>]    : (optional) dvd/bluray device/path to scan, /dev/disk1 by default\n");
             fprintf(stdout, "\nDescription:\n"
                     "  This programs scans a dvd or bluray and outputs:\n"
-                    "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <chapters_secs.ms>\n"
-                    "    SUB <n> <id> <name>\n\n");
+                    "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <secs.ms1> <hh:mm:ss.ms1> ...\n"
+                    "    SUB <n> <id> <name>\n"
+                    "    AUDIO <n> <id> <name>\n\n");
             return 0;
         case 'V':
             version(stdout, BUILD_APPNAME);
             return 0;
+        case 'm': {
+            char * end = NULL;
+            if (arg == NULL) {
+                fprintf(stderr, "error: argument required for option '-m'\n");
+                return -1;
+            }
+            ++(*i_argv);
+            errno = 0;
+            options->min_title_secs = strtoul(arg, &end, 0);
+            if (end == NULL || *end != 0 || errno != 0) {
+                fprintf(stderr, "error: argument for option '-m' should be a number\n"); return -1;
+            }
+            break ;
+        }
         case 's':
             vdvdnav_info_get_source(stdout, NULL, 0, NULL);
             return 0;
@@ -104,28 +122,36 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
     }
     return 1;
 }
+
 int process_bluray(options_t * opts) {
     BLURAY *                    br;
-    const BLURAY_DISC_INFO *    disc_info;
+    //const BLURAY_DISC_INFO *    disc_info;
     BLURAY_TITLE_INFO *         title_info;
     unsigned int                ntitles;
     uint64_t                    duration;
+    //uint64_t                    max_duration = 0;
+    //uint32_t                    longest_title = 0;
     FILE * const                out = stdout;
+    int                         sub = 1, audio = 1;
 
     if ((br = bd_open(opts->devpath, NULL)) == NULL) {
         fprintf(stderr, "bluray_open: error openning %s.\n", opts->devpath);
         return ERR_OPEN;
     }
 
+    /* not needed
     if ((disc_info = bd_get_disc_info(br)) == NULL) {
         fprintf(stderr, "bluray_get_disc_info: error.\n");
         return ERR_OTHER;
-    }
-    //uint32_t bd_get_titles(BLURAY *bd, uint8_t flags, uint32_t min_title_length);
-    if ((ntitles = bd_get_titles(br, 0, 0)) == 0) {
+    }*/
+
+    /* uint32_t bd_get_titles(BLURAY *bd, uint8_t flags, uint32_t min_title_length); */
+    if ((ntitles = bd_get_titles(br, TITLES_RELEVANT, 0)) == 0) {
         fprintf(stderr, "bluray_get_titles(): no title.\n");
+        bd_close(br);
         return ERR_OTHER;
     }
+
     for (unsigned int i = 0; i < ntitles; ++i) {
         //BLURAY_TITLE_INFO* bd_get_title_info(BLURAY *bd, uint32_t title_idx, unsigned angle);
         if ((title_info = bd_get_title_info(br, i, 0)) == NULL) {
@@ -134,13 +160,62 @@ int process_bluray(options_t * opts) {
         }
         duration = title_info->duration;
         duration = ((duration * 100) / 90) / 100;
-        fprintf(out, "TITLE % 3d DURATION % 9lld.%03lld %02lld:%02lld:%02lld.%03lld CHAPTERS ",
+
+        if (opts->min_title_secs > 0 && duration / 1000 < opts->min_title_secs) {
+            bd_free_title_info(title_info);
+            continue ;
+        }
+
+        /*if (duration > max_duration) {
+            max_duration = duration;
+            longest_title = title_info->idx;
+        }*/
+
+        fprintf(out, "TITLE % 3d DURATION % 9lld.%03lld %02lld:%02lld:%02lld.%03lld CHAPTERS",
                 title_info->idx + 1, duration / 1000, duration % 1000,
                 (duration / 1000) / 3600, ((duration / 1000) / 60) % 60,
                 (duration / 1000) % 60, duration % 1000);
+
+        for (unsigned int c = 0; c < title_info->chapter_count; ++c) {
+            duration = title_info->chapters[c].start;
+            duration = ((duration * 100) / 90) / 100;
+
+            fprintf(out, " %llu.%03llu %02llu:%02llu:%02llu.%03llu",
+                    duration / 1000ULL, duration % 1000ULL,
+                    (duration / 1000ULL) / 3600, ((duration / 1000ULL) / 60) % 60,
+                    (duration / 1000ULL) % 60, duration % 1000ULL);
+        }
+
         fprintf(out, "\n");
+
+        if (sub || audio) {
+            for (unsigned int c = 0; c < title_info->clip_count; ++c) {
+                unsigned int s;
+                for (s = 0; s < title_info->clips[c].pg_stream_count; ++s) {
+                    //unsigned int lang = title_info->clips[c].pg_streams[s].pid;
+                    unsigned char * lang = title_info->clips[c].pg_streams[s].lang;
+                    fprintf(out, "SUB % 2d % 2d %s\n", i, s, lang);
+                }
+                /* no title_info->clips[c].ig_streams */
+                if (s)
+                    sub = 0;
+            }
+
+            for (unsigned int c = 0; c < title_info->clip_count; ++c) {
+                unsigned int s;
+                for (s = 0; s < title_info->clips[c].audio_stream_count; ++s) {
+                    unsigned char * lang = title_info->clips[c].audio_streams[s].lang;
+                    fprintf(out, "AUDIO % 2d % 2d %s\n", i, s, lang);
+                }
+                /* no title_info->clips[c].ig_streams */
+                if (s)
+                    audio = 0;
+            }
+        }
+
+        bd_free_title_info(title_info);
     }
-    fprintf(stderr, "bluray chapters not implemented\n");
+    //printf("longest=%d\n", longest_title);
 
     bd_close(br);
 
@@ -179,15 +254,22 @@ int process_dvd(options_t * opts) {
             nchapters = dvdnav_describe_title_chapters(nav, title, &times, &duration);
             if (nchapters > 0 && times != NULL) {
                 duration = ((duration * 100) / 90) / 100;
+
+                if (opts->min_title_secs > 0 && duration / 1000 < opts->min_title_secs) {
+                    free(times);
+                    continue ;
+                }
+
+                if (duration > max_duration) {
+                    max_duration = duration;
+                    longest_title = title;
+                }
                 fprintf(out, "TITLE % 3d DURATION % 9lld.%03lld %02lld:%02lld:%02lld.%03lld CHAPTERS", title, duration / 1000, duration % 1000,
                         (duration / 1000) / 3600, ((duration / 1000) / 60) % 60, (duration / 1000) % 60, duration % 1000);
                 for (uint32_t chapter = 0; chapter < nchapters; chapter++) {
                     duration = ((times[chapter] * 100) / 90) / 100;
-                    fprintf(out, " %lld.%03lld", duration / 1000, duration % 1000);
-                    if (duration > max_duration) {
-                        max_duration = duration;
-                        longest_title = title;
-                    }
+                    fprintf(out, " %lld.%03lld %02lld:%02lld:%02lld.%03lld", duration / 1000, duration % 1000,
+                            (duration / 1000) / 3600, ((duration / 1000) / 60) % 60, (duration / 1000) % 60, duration % 1000);
                 }
                 fprintf(out, "\n");
                 free(times);
@@ -195,6 +277,8 @@ int process_dvd(options_t * opts) {
                 fprintf(stderr, "dvdnav_describe_title_chapters(title %d): error: %s\n", title, dvdnav_err_to_string(nav));
             }
         }
+
+        fprintf(stderr, "dvd: AUDIO listing not supported\n");
 
         dvdnav_title_play(nav, longest_title);
         for (uint8_t sub_idx = 0; sub_idx < 32; sub_idx++) {
@@ -215,8 +299,9 @@ int process_dvd(options_t * opts) {
     }
     return status == DVDNAV_STATUS_OK ? ERR_OK : ERR_OTHER;
 }
+
 int main(int argc, char **argv) {
-    options_t       options = { .devpath = NULL };
+    options_t       options = { .devpath = NULL, .min_title_secs = 0 };
     int             result;
     struct stat     stats;
     char            path[PATH_MAX] = {0, };
@@ -224,6 +309,8 @@ int main(int argc, char **argv) {
     if ((result = parse_options(argc, argv, &options)) <= 0) {
 	    return -result;
     }
+
+    version(stderr, BUILD_APPNAME);
 
     if (options.devpath == NULL) {
    	    options.devpath = "/dev/disk1";
