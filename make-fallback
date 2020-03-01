@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# Copyright (C) 2017-2019 Vincent Sallaberry
+# vsensorsdemo <https://github.com/vsallaberry/vsensorsdemo>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+############################################################################################
+#
+# Fallback make script in case 'VAR != cmd" or VAR ?= $(shell cmd) cause syntax error.
+# - On recent gnu make, "!=' is understood.
+# - On gnu make 3.81 '!=' is not understood but it does NOT cause syntax error.
+# - On {open,free,net}bsd $(shell cmd) is not understood but does NOT cause syntax error.
+# - On gnu make 3.82, '!=' causes syntax error, then on the moment only case where this
+#   script is needed.
+#
+# Use it as you would use 'make',
+# eg: ./make-fallback clean, make-fallback CFLAGS=-std=gnu99, ...
+# 'make-fallback -C <folder>' is supported but 'make-fallback -f <makefile>' is not.
+# By default this wraps 'make', use '$ mymake=gmake ./make-fallback' to use an alternate one.
+#
+############################################################################################
+mydir=$(dirname "$0"); curpwd="`pwd`"; cd "${mydir}"; mydir="`pwd`"; cd "${curpwd}"
+mypath="${mydir}/"$(basename "$0")
+test -z "${mymake}" && mymake="make"
+mytest=uname
+
+# By default the makefile is in current folder, but take care of make -C <folder>
+# -C options are concatenated, eg: make -C / -C etc is equivalent to make -C /etc.
+mymakefile=
+changedir=
+for arg in "$@"; do
+    [ -n "${changedir}" ] && mymakefile="${mymakefile}${arg}" && changedir=
+    [ "${arg}" = "-C" ] && changedir=yes
+done
+[ -z "${mymakefile}" ] && mymakefile="${curpwd}/Makefile" || mymakefile="${mymakefile}/Makefile"
+
+# Backup makefile, and try to patch it, preserviing timestamps, make, then restore it.
+if tmp=`mktemp /tmp/Makefile.XXXXXXXX` && mv "${mymakefile}" "${tmp}"; then
+    if ! printf "TMP\t!=${mytest}\nall:\n\t@echo \$(TMP)" | "${mymake}" -f - 2> /dev/null | grep -Eq "^$(${mytest})\$"; then
+        # make does not understand bsd variable command substitution 'var!=cmd'. remove them.
+        cat "${tmp}" | sed -e 's/^[a-zA-Z0-9_]*[[:space:]]*!=.*//' > "${mymakefile}"
+    elif ! printf "TMP\t= \$(shell uname)\nall:\n\t@echo \$(TMP)" | "${mymake}" -f - 2> /dev/null | grep -Eq "^$(${mytest})\$"; then
+        # make does not understand gnu variable command substitution 'var=$(shell cmd)'. remove them.
+        cat "${tmp}" | sed -e 's/^[a-zA-Z0-9_]*[[:space:]]*\?=[[:space:]]*\$(shell.*//' > "${mymakefile}"
+    else
+        cat "${tmp}" > "${mymakefile}"
+    fi
+    touch -r "${tmp}" "${mymakefile}"
+
+    # create empty .alldeps.d as some old bsd make do not see it when created by a makefile shell command.
+    deps=$(dirname "${mymakefile}")/.alldeps.d
+    [ -e "$deps" ] || printf -- '# alldeps.d\ninclude config.make\n' > "$deps"
+
+    "${mymake}" MAKE="${mypath}" "$@"; status=$?
+
+    mv "${tmp}" "${mymakefile}"
+    exit $status
+else
+    echo "error: cannot write in /tmp or on ${mymakefile}."
+    exit 1
+fi
+
