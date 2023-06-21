@@ -88,7 +88,7 @@ FOREIGN_MAIN	?=
 DISTDIR		= ../../dist
 
 # PREFIX: where the application is to be installed
-PREFIX		= /usr/local/wine
+PREFIX		= /usr/local
 INSTALL_FILES	= $(BIN)
 
 # CONFIG_CHECK	= all zlib ncurses libcrypto applecrypto openssl sigqueue sigrtmin
@@ -101,11 +101,13 @@ CONFIG_CHECK	= zlib
 # if you set LIBS_<system>, or similar. They are added here to make you control the order of arguments).
 # Choice between <flag>_RELEASE/_DEBUG/_TEST is done according to BUILDINC / make debug / make test
 WARN_RELEASE	= -Wall -W -pedantic -Wno-unknown-attributes $(sys_WARN)
-ARCH_RELEASE	= -march=native -arch i386 -arch x86_64
+#WARN_RELEASE	=  -W -Wno-unknown-attributes $(sys_WARN)
+#ARCH_RELEASE	= -march=native -arch i386 -arch x86_64
+ARCH_RELEASE	= -march=native -arch x86_64
 OPTI_COMMON	= -pipe -fstack-protector
 OPTI_RELEASE	= -O3 $(OPTI_COMMON) $(sys_OPTI)
-INCS_RELEASE	= $(sys_INCS) -I$(PREFIX)/include
-LIBS_RELEASE	= $(SUBLIBS) $(sys_LIBS) -lpthread $(CONFIG_ZLIB) -L$(PREFIX)/lib -ldvdnav -lbluray
+INCS_RELEASE	= $(sys_INCS) -I$(PREFIX)/include $$($(PKGCONFIG) --cflags dvdnav libbluray)
+LIBS_RELEASE	= $(SUBLIBS) $(sys_LIBS) -lpthread $(CONFIG_ZLIB) -L$(PREFIX)/lib $$($(PKGCONFIG) --libs dvdnav libbluray)
 MACROS_RELEASE	=
 WARN_DEBUG	= $(WARN_RELEASE)
 ARCH_DEBUG	= $(ARCH_RELEASE)
