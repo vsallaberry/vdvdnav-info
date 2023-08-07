@@ -39,6 +39,12 @@
 #define ERR_OPEN    1
 #define ERR_OTHER   2
 
+#if defined(__APPLE__)
+# define DEFAULT_DEVICE  "/dev/rdisk1"
+#else //elif defined(__linux__)
+# define DEFAULT_DEVICE  "/dev/sr0"
+#endif
+
 static struct { char short_opt; const char *desc; const char* arg; } s_opt_desc[] = {
 	{ 'h', "show usage", NULL },
 	{ 'V', "show version", NULL },
@@ -87,9 +93,11 @@ static int parse_option(char opt, char *arg, void *v_options, int argc, char **a
         case 'h':
             usage(0, argc, argv);
             fprintf(stdout, "Arguments:\n");
-            fprintf(stdout, "  [<device_or_path>]    : (optional) dvd/bluray device/path to scan, /dev/disk1 by default\n");
+            fprintf(stdout, "  [<device_or_path>]    : (optional) dvd/bluray device/path to scan, %s by default\n", DEFAULT_DEVICE);
             fprintf(stdout, "\nDescription:\n"
                     "  This programs scans a dvd or bluray and outputs:\n"
+                    "    ID <hex>\n"
+                    "    NAME <name>\n"
                     "    TITLE <n> DURATION <secs.ms> <hh:mm:ss.ms> CHAPTERS <secs.ms1> <hh:mm:ss.ms1> ...\n"
                     "    SUB <n> <id> <name>\n"
                     "    AUDIO <n> <id> <name>\n\n");
@@ -422,7 +430,7 @@ int main(int argc, char **argv) {
     version(stderr, BUILD_APPNAME);
 
     if (options.devpath == NULL) {
-   	    options.devpath = "/dev/disk1";
+   	    options.devpath = DEFAULT_DEVICE;
     }
 
     fprintf(stderr, "searching titles on %s...\n", options.devpath);
