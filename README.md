@@ -9,7 +9,10 @@
 * [License](#license)
 
 ## Overview
-**vdvdnav-info** is a tiny utility showing video,audio,subtitle tracks of a DVD or bluray.
+**vdvdnav-info** is a tiny utility showing video,audio,subtitle tracks of a DVD or bluray,
+using :
+- libdvdnav <https://www.videolan.org/developers/libdvdnav.html>
+- libbluray <https://www.videolan.org/developers/libbluray.html>
 
 ## System requirements
 - gcc/clang for compilation.
@@ -22,7 +25,7 @@ For Blurays, give the mount point as bluray device (eg: /media/user/PHAMTOM\_MEN
 
 ## Contact
 [vsallaberry@gmail.com]  
-<https://github.com/vsallaberry/aslpipe>
+<https://github.com/vsallaberry/vdvdnav-info>
 
 ## License
 GPLv3 or later. See LICENSE file.
